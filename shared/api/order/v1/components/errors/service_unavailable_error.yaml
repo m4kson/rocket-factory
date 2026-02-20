@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP status code representing the error type (e.g., 503 for Service Unavailable).
+    example: 503
+  message:
+    type: string
+    description: A human-readable message providing more details about the error.
+    example: "Service Unavailable: The server is currently unable to handle the request due to temporary overloading or maintenance of the server."

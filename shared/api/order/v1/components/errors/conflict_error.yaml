@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP status code representing the error type (e.g., 409 for Conflict).
+    example: 409
+  message:
+    type: string
+    description: A human-readable message providing more details about the error.
+    example: "Conflict: The request could not be completed due to a conflict with the current state of the resource."

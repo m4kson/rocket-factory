@@ -1,0 +1,9 @@
+type: string
+description: Метод оплаты
+default: unknown
+enum:
+  - unknown
+  - card
+  - sbp
+  - credit_card
+  - investor_money

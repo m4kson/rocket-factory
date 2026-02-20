@@ -1,0 +1,10 @@
+type: string
+description: Статус заказа
+default: unknown
+enum:
+  - unknown
+  - pending
+  - paid
+  - cancelled
+  - failed
+  - delivered

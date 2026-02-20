@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP status code representing the error type (e.g., 429 for Too Many Requests).
+    example: 429
+  message:
+    type: string
+    description: A human-readable message providing more details about the error.
+    example: "Too Many Requests: You have exceeded the rate limit for this endpoint. Please try again later."

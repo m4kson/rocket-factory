@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP status code representing the error type (e.g., 500 for Internal Server Error).
+    example: 500
+  message:
+    type: string
+    description: A human-readable message providing more details about the error.
+    example: "An unexpected error occurred. Please try again later."

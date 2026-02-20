@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+  code:
+    type: integer
+    description: HTTP status code representing the error type (e.g., 400  for Bad Request).
+    example: 400
+  message:
+    type: string
+    description: A human-readable message providing more details about the error.
+    example: "Bad Request: The server could not understand the request due to invalid syntax."
