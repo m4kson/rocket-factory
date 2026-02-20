@@ -4,7 +4,7 @@ required:
     - user_uuid
     - part_uuids
     - total_price
-    - transaction_id
+    - transaction_uuid
     - payment_method
     - status
 properties:
@@ -30,7 +30,7 @@ properties:
         format: float
         description: Общая стоимость заказа, рассчитанная на основе цен деталей и их количества.
         example: 199.99
-    transaction_id:
+    transaction_uuid:
         type: string
         format: uuid
         description: Идентификатор транзакции, который был сгенерирован при оплате заказа.

@@ -35,12 +35,6 @@ post:
         application/json:
           schema:
             $ref: ../components/errors/forbidden_error.yaml
-    404:
-      description: "Not Found - заказ с указанным UUID не найден"
-      content:
-        application/json:
-          schema:
-            $ref: ../components/errors/not_found_error.yaml
     429:
       description: "Too Many Requests - превышен лимит запросов"
       content:

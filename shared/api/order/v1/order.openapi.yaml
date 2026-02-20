@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API для управления заказами на ракетостроительном заводе.
 x-ogen:
-  target: ./pkg/openapi/order/v1
+  target: ./shared/pkg/openapi/order/v1
   package: order_v1
   clean: true
 
@@ -25,3 +25,7 @@ paths:
   /api/v1/orders/{order_uuid}/cancel:
     $ref: ./paths/order_cancel.yaml
 
+components:
+  schemas:
+    OrderDTO:
+        $ref: ./components/order_dto.yaml

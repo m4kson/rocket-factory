@@ -9,7 +9,7 @@ vars:
   BUF_VERSION: '1.53.0'
   PROTOC_GEN_GO_VERSION: 'v1.36.6'
   PROTOC_GEN_GO_GRPC_VERSION: 'v1.5.1'
-  OGEN_VERSION: 'v1.12.0'
+  OGEN_VERSION: 'v1.19.0'
   YQ_VERSION: 'v4.45.2'
   GRPCURL_VERSION: 'v1.9.3'
 
@@ -178,7 +178,15 @@ tasks:
     cmds:
       - |
         [ -f {{.REDOCLY}} ] || {
-          npm ci
+          # Если есть lockfile — используем быстрый и детерминированный npm ci
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            echo '📦 Запускаем npm ci (lockfile найден)'
+            npm ci
+          else
+            # В противном случае выполняем npm install, чтобы установить зависимости без lockfile
+            echo '⚠️ package-lock.json не найден — запускаем npm install (fallback)'
+            npm install
+          fi
         }
 
   redocly-cli:order-v1-bundle:
