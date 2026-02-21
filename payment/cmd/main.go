@@ -23,7 +23,7 @@ type paymentService struct {
 
 func (s *paymentService) PayOrder(_ context.Context, request *paymentV1.PayOrderRequest) (*paymentV1.PayOrderResponse, error) {
 	transactionId := uuid.New().String()
-	fmt.Println("transactionId:", transactionId)
+	fmt.Println("Оплата прошла успешно, transaction_uuid: ", transactionId)
 
 	return &paymentV1.PayOrderResponse{
 		TransactionUuid: transactionId,
