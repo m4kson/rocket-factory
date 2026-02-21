@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -23,7 +22,7 @@ type paymentService struct {
 
 func (s *paymentService) PayOrder(_ context.Context, request *paymentV1.PayOrderRequest) (*paymentV1.PayOrderResponse, error) {
 	transactionId := uuid.New().String()
-	fmt.Println("Оплата прошла успешно, transaction_uuid: ", transactionId)
+	log.Printf("Оплата прошла успешно, transaction_uuid: %s", transactionId)
 
 	return &paymentV1.PayOrderResponse{
 		TransactionUuid: transactionId,
