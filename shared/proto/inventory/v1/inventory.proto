@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package inventory.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/m4kson/rocket-factory/shared/pkg/proto/inventory/v1;inventory_v1";
+
+service InventoryService {
+  rpc GetPart(GetPartRequest) returns (GetPartResponse);
+  rpc ListParts(ListPartsRequest) returns (ListPartsResponse);
+}
+
+// GetPartRequest содержит uuid запчасти, которую нужно получить
+message GetPartRequest {
+  string part_uuid = 1;
+}
+
+// GetPartResponse содержит информацию о запчасти, которую нужно получить
+message GetPartResponse {
+  Part part = 1;
+}
+
+// Part содержит информацию о запчасти
+message Part {
+  string uuid = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  int64 stock_quantity = 5;
+  Category category = 6;
+  Dimensions dimensions = 7;
+  Manufacturer manufacturer = 8;
+  repeated string tags = 9;
+  map<string, Value> metadata = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Category содержит информацию о категории запчасти
+message Category {
+  oneof category {
+    string unknown = 1;
+    string engine = 2;
+    string fuel = 3;
+    string porthole = 4;
+    string wing = 5;
+  }
+}
+
+// Dimensions содержит информацию о размерах запчасти
+message Dimensions {
+  double length = 1;
+  double width = 2;
+  double height = 3;
+  double weight = 4;
+}
+
+// Manufacturer содержит информацию о производителе запчасти
+message Manufacturer {
+  string name = 1;
+  string country = 2;
+  string website = 3;
+}
+
+// Value содержит значение, которое может быть строкой, числом, булевым значением или другим типом данных
+message Value {
+  oneof value {
+    string string_value = 1;
+    int64 int64_value = 2;
+    double double_value = 3;
+    bool bool_value = 4;
+  }
+}
+
+// ListPartsRequest содержит фильтры для получения списка запчастей
+message ListPartsRequest {
+  PartsFilter filter = 1;
+}
+
+// PartsFilter содержит фильтры для получения списка запчастей
+message PartsFilter {
+  repeated string uuids = 1;
+  repeated string names = 2;
+  repeated Category categories = 3;
+  repeated string manufacturer_countries = 4;
+  repeated string tags = 5;
+}
+
+// ListPartsResponse содержит список запчастей, которые соответствуют фильтрам из ListPartsRequest
+message ListPartsResponse {
+  repeated Part parts = 1;
+}
