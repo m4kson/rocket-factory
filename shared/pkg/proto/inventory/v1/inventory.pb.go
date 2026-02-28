@@ -118,7 +118,7 @@ type Part struct {
 	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Price         float64                `protobuf:"fixed64,4,opt,name=price,proto3" json:"price,omitempty"`
+	Price         float32                `protobuf:"fixed32,4,opt,name=price,proto3" json:"price,omitempty"`
 	StockQuantity int64                  `protobuf:"varint,5,opt,name=stock_quantity,json=stockQuantity,proto3" json:"stock_quantity,omitempty"`
 	Category      *Category              `protobuf:"bytes,6,opt,name=category,proto3" json:"category,omitempty"`
 	Dimensions    *Dimensions            `protobuf:"bytes,7,opt,name=dimensions,proto3" json:"dimensions,omitempty"`
@@ -182,7 +182,7 @@ func (x *Part) GetDescription() string {
 	return ""
 }
 
-func (x *Part) GetPrice() float64 {
+func (x *Part) GetPrice() float32 {
 	if x != nil {
 		return x.Price
 	}
@@ -801,7 +801,7 @@ const file_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x14\n" +
-	"\x05price\x18\x04 \x01(\x01R\x05price\x12%\n" +
+	"\x05price\x18\x04 \x01(\x02R\x05price\x12%\n" +
 	"\x0estock_quantity\x18\x05 \x01(\x03R\rstockQuantity\x122\n" +
 	"\bcategory\x18\x06 \x01(\v2\x16.inventory.v1.CategoryR\bcategory\x128\n" +
 	"\n" +

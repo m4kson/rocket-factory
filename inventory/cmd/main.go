@@ -10,11 +10,13 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/google/uuid"
 	inventoryV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/inventory/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const grpcPort = "50052"
@@ -138,6 +140,144 @@ func (s *InventoryService) ListParts(ctx context.Context, request *inventoryV1.L
 	}, nil
 }
 
+// initializeTestData инициализирует сервис тестовыми данными о деталях
+func initializeTestData(service *InventoryService) {
+	now := timestamppb.Now()
+
+	testParts := []*inventoryV1.Part{
+		{
+			Uuid:          uuid.New().String(),
+			Name:          "Турбокомпрессор",
+			Description:   "Высокопроизводительный турбокомпрессор для двигателя",
+			Price:         15999.99,
+			StockQuantity: 45,
+			Category: &inventoryV1.Category{
+				Category: &inventoryV1.Category_Engine{Engine: "engine"},
+			},
+			Dimensions: &inventoryV1.Dimensions{
+				Length: 250.0,
+				Width:  180.0,
+				Height: 200.0,
+				Weight: 12.5,
+			},
+			Manufacturer: &inventoryV1.Manufacturer{
+				Name:    "TurboTech Industries",
+				Country: "Germany",
+				Website: "https://turbotech.de",
+			},
+			Tags:      []string{"performance", "engine", "boost"},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		{
+			Uuid:          uuid.New().String(),
+			Name:          "Топливный насос",
+			Description:   "Электрический топливный насос высокого давления",
+			Price:         8499.50,
+			StockQuantity: 120,
+			Category: &inventoryV1.Category{
+				Category: &inventoryV1.Category_Fuel{Fuel: "fuel"},
+			},
+			Dimensions: &inventoryV1.Dimensions{
+				Length: 150.0,
+				Width:  100.0,
+				Height: 120.0,
+				Weight: 2.3,
+			},
+			Manufacturer: &inventoryV1.Manufacturer{
+				Name:    "FuelFlow Corp",
+				Country: "Japan",
+				Website: "https://fuelflow.jp",
+			},
+			Tags:      []string{"fuel", "pump", "electrical"},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		{
+			Uuid:          uuid.New().String(),
+			Name:          "Радиатор охлаждения",
+			Description:   "Алюминиевый радиатор охлаждения двигателя",
+			Price:         5299.00,
+			StockQuantity: 60,
+			Category: &inventoryV1.Category{
+				Category: &inventoryV1.Category_Engine{Engine: "engine"},
+			},
+			Dimensions: &inventoryV1.Dimensions{
+				Length: 600.0,
+				Width:  400.0,
+				Height: 50.0,
+				Weight: 8.2,
+			},
+			Manufacturer: &inventoryV1.Manufacturer{
+				Name:    "CoolTech Solutions",
+				Country: "USA",
+				Website: "https://cooltech.com",
+			},
+			Tags:      []string{"cooling", "radiator", "engine"},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		{
+			Uuid:          uuid.New().String(),
+			Name:          "Крыло левое",
+			Description:   "Алюминиевое крыло с аэродинамическим профилем",
+			Price:         12500.00,
+			StockQuantity: 25,
+			Category: &inventoryV1.Category{
+				Category: &inventoryV1.Category_Wing{Wing: "wing"},
+			},
+			Dimensions: &inventoryV1.Dimensions{
+				Length: 8500.0,
+				Width:  2500.0,
+				Height: 150.0,
+				Weight: 180.0,
+			},
+			Manufacturer: &inventoryV1.Manufacturer{
+				Name:    "AeroWings Ltd",
+				Country: "UK",
+				Website: "https://aerowings.co.uk",
+			},
+			Tags:      []string{"wing", "aerodynamic", "aluminum"},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		{
+			Uuid:          uuid.New().String(),
+			Name:          "Иллюминатор",
+			Description:   "Прочный многослойный иллюминатор с защитой от удара",
+			Price:         3750.25,
+			StockQuantity: 80,
+			Category: &inventoryV1.Category{
+				Category: &inventoryV1.Category_Porthole{Porthole: "porthole"},
+			},
+			Dimensions: &inventoryV1.Dimensions{
+				Length: 800.0,
+				Width:  600.0,
+				Height: 80.0,
+				Weight: 15.5,
+			},
+			Manufacturer: &inventoryV1.Manufacturer{
+				Name:    "ClearView Optics",
+				Country: "Switzerland",
+				Website: "https://clearview.ch",
+			},
+			Tags:      []string{"window", "porthole", "safety"},
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+	}
+
+	service.mu.Lock()
+	defer service.mu.Unlock()
+
+	for _, part := range testParts {
+		service.parts[part.Uuid] = part
+		log.Printf("✅ Инициализирована деталь: %s (UUID: %s)", part.Name, part.Uuid)
+	}
+
+	log.Printf("📦 Всего деталей инициализировано: %d", len(service.parts))
+}
+
 func main() {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 	if err != nil {
@@ -150,6 +290,9 @@ func main() {
 	service := &InventoryService{
 		parts: make(map[string]*inventoryV1.Part),
 	}
+
+	// Инициализируем тестовые данные
+	initializeTestData(service)
 
 	inventoryV1.RegisterInventoryServiceServer(s, service)
 

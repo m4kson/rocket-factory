@@ -2,12 +2,22 @@ package main
 
 import (
 	"context"
+	"errors"
+	"log"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	orderV1 "github.com/m4kson/rocket-factory/shared/pkg/openapi/order/v1"
+	inventoryV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/inventory/v1"
+	paymentV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/payment/v1"
 )
 
 const (
@@ -19,12 +29,51 @@ const (
 
 type OrderStorage struct {
 	mu     sync.RWMutex
-	orders map[uuid.UUID]*orderV1.GetOrderResponse //todo Тут я используя GetOrderResponse, так как OrderrDto почему-то не генерируется ogen'ом.
+	orders map[uuid.UUID]*OrderDTO
+
+	paymentClient   *PaymentClient
+	inventoryClient *InventoryClient
 }
 
-func NewOrderStorage() *OrderStorage {
+type OrderDTO struct {
+	OrderUUID       uuid.UUID
+	UserUUID        uuid.UUID
+	PartUuids       []uuid.UUID
+	TotalPrice      float32
+	TransactionUUID uuid.UUID
+	PaymentMethod   orderV1.PaymentMethod
+	Status          orderV1.OrderStatus
+}
+
+func NewOrderStorage(paymentClient *PaymentClient, inventoryClient *InventoryClient) *OrderStorage {
 	return &OrderStorage{
-		orders: make(map[uuid.UUID]*orderV1.GetOrderResponse),
+		orders:          make(map[uuid.UUID]*OrderDTO),
+		paymentClient:   paymentClient,
+		inventoryClient: inventoryClient,
+	}
+}
+
+func buildOrderDTOFromCreate(req *orderV1.CreateOrderRequest, totalPrice float32) *OrderDTO {
+	return &OrderDTO{
+		OrderUUID:       uuid.New(),
+		UserUUID:        req.UserUUID,
+		PartUuids:       req.PartUuids,
+		TotalPrice:      totalPrice,
+		TransactionUUID: uuid.Nil,
+		PaymentMethod:   orderV1.PaymentMethodUNKNOWN,
+		Status:          orderV1.OrderStatusPENDINGPAYMENT,
+	}
+}
+
+func buildGetOrderResponseFromDTO(d *OrderDTO) *orderV1.GetOrderResponse {
+	return &orderV1.GetOrderResponse{
+		OrderUUID:       d.OrderUUID,
+		UserUUID:        d.UserUUID,
+		PartUuids:       d.PartUuids,
+		TotalPrice:      d.TotalPrice,
+		TransactionUUID: d.TransactionUUID,
+		PaymentMethod:   d.PaymentMethod,
+		Status:          d.Status,
 	}
 }
 
@@ -37,49 +86,60 @@ func (s *OrderStorage) GetOrderById(orderId uuid.UUID) *orderV1.GetOrderResponse
 		return nil
 	}
 
-	return order
+	return buildGetOrderResponseFromDTO(order)
 }
 
 func (s *OrderStorage) CreateOrder(orderInfo *orderV1.CreateOrderRequest) *orderV1.CreateOrderResponse {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	order := &orderV1.GetOrderResponse{
-		OrderUUID:       uuid.New(),
-		UserUUID:        orderInfo.UserUUID,
-		PartUuids:       orderInfo.PartUuids,
-		TotalPrice:      0,        //todo implement price calculation
-		TransactionUUID: uuid.Nil, // todo implement transaction creation
-		PaymentMethod:   orderV1.PaymentMethodUnknown,
-		Status:          orderV1.OrderStatusUnknown,
+	totalPrice := float32(0.0)
+	for _, partId := range orderInfo.PartUuids {
+		part, err := GetPart(context.Background(), s.inventoryClient.client, &inventoryV1.GetPartRequest{PartUuid: partId.String()})
+		if err != nil {
+			log.Printf("Failed to get part %s: %v", partId, err)
+			continue
+		}
+		totalPrice += part.Part.Price
 	}
 
-	s.orders[order.OrderUUID] = order
+	dto := buildOrderDTOFromCreate(orderInfo, totalPrice)
+	s.orders[dto.OrderUUID] = dto
 
 	response := orderV1.CreateOrderResponse{
-		OrderUUID:  order.OrderUUID,
-		TotalPrice: order.TotalPrice,
+		OrderUUID:  dto.OrderUUID,
+		TotalPrice: dto.TotalPrice,
 	}
 
 	return &response
 }
 
-func (s *OrderStorage) PayOrderByUUID(orderId uuid.UUID, paymentMethod orderV1.PaymentMethod) *orderV1.PayOrderResponse {
+func (s *OrderStorage) PayOrderByUUID(ctx context.Context, orderId uuid.UUID, paymentMethod orderV1.PaymentMethod) *orderV1.PayOrderResponse {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	order, ok := s.orders[orderId]
+	dto, ok := s.orders[orderId]
 	if !ok {
 		return nil
 	}
 
-	//todo call payment service
+	paymentRequest := &paymentV1.PayOrderRequest{
+		OrderUuid:     orderId.String(),
+		UserUuid:      dto.UserUUID.String(),
+		PaymentMethod: ConvertOpenAPIPaymentMethodToProto(paymentMethod),
+	}
+	transactionUUID, err := PayOrder(ctx, s.paymentClient.client, paymentRequest)
+	if err != nil {
+		log.Printf("Failed to process payment for order %s: %v", orderId, err)
+		return nil
+	}
 
-	order.PaymentMethod = paymentMethod
-	order.Status = orderV1.OrderStatusPaid
+	dto.PaymentMethod = paymentMethod
+	dto.Status = orderV1.OrderStatusPAID
+	dto.TransactionUUID = uuid.MustParse(transactionUUID.TransactionUuid)
 
 	response := orderV1.PayOrderResponse{
-		TransactionID: uuid.Nil, // todo insert real transaction ID
+		TransactionID: dto.TransactionUUID,
 	}
 
 	return &response
@@ -89,14 +149,12 @@ func (s *OrderStorage) CancelOrderByUUID(orderId uuid.UUID) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	order, ok := s.orders[orderId]
+	dto, ok := s.orders[orderId]
 	if !ok {
 		return false
 	}
 
-	//todo call payment service to cancel transaction if order is paid
-
-	order.Status = orderV1.OrderStatusCancelled
+	dto.Status = orderV1.OrderStatusCANCELLED
 
 	return true
 }
@@ -111,10 +169,8 @@ func NewOrderHandler(storage *OrderStorage) *OrderHandler {
 	}
 }
 
-//todo implement interface from oas_server_gen.go
-
 func (h *OrderHandler) CreateOrder(ctx context.Context, req *orderV1.CreateOrderRequest) (orderV1.CreateOrderRes, error) {
-	return h.storage.CreateOrder(req), nil //todo implement error handling
+	return h.storage.CreateOrder(req), nil
 }
 
 func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrderByUUIDParams) (orderV1.GetOrderByUUIDRes, error) {
@@ -130,7 +186,7 @@ func (h *OrderHandler) GetOrderByUUID(ctx context.Context, params orderV1.GetOrd
 }
 
 func (h *OrderHandler) PayOrderByUUID(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderByUUIDParams) (orderV1.PayOrderByUUIDRes, error) {
-	order := h.storage.PayOrderByUUID(params.OrderUUID, req.PaymentMethod)
+	order := h.storage.PayOrderByUUID(ctx, params.OrderUUID, req.PaymentMethod)
 	if order == nil {
 		return &orderV1.NotFoundError{
 			Code:    http.StatusNotFound,
@@ -142,16 +198,71 @@ func (h *OrderHandler) PayOrderByUUID(ctx context.Context, req *orderV1.PayOrder
 }
 
 func (h *OrderHandler) CancelOrderByUUID(ctx context.Context, params orderV1.CancelOrderByUUIDParams) (orderV1.CancelOrderByUUIDRes, error) {
-	response := h.storage.CancelOrderByUUID(params.OrderUUID)
-	if !response {
+	ok := h.storage.CancelOrderByUUID(params.OrderUUID)
+	if !ok {
 		return &orderV1.NotFoundError{
 			Code:    http.StatusNotFound,
 			Message: "Order with UUID '" + params.OrderUUID.String() + "' not found",
 		}, nil
 	}
 
-	return &orderV1.NotFoundError{
-		Code:    http.StatusNoContent,
-		Message: "Order canceled successfully",
-	}, nil
+	return &orderV1.CancelOrderByUUIDNoContent{}, nil
+}
+
+func main() {
+	paymentClient, err := NewPaymentClient()
+	if err != nil {
+		log.Fatalf("Failed to create payment client: %v", err)
+	}
+	defer paymentClient.Close()
+
+	inventoryClient, err := NewInventoryClient()
+	if err != nil {
+		log.Printf("Failed to create inventory client: %v", err)
+	}
+	defer inventoryClient.Close()
+
+	storage := NewOrderStorage(paymentClient, inventoryClient)
+	orderHandler := NewOrderHandler(storage)
+
+	orderServer, err := orderV1.NewServer(orderHandler)
+	if err != nil {
+		log.Printf("Failed to create order server: %v", err)
+	}
+
+	r := chi.NewRouter()
+
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(60 * time.Second))
+
+	r.Mount("/api/v1", orderServer)
+
+	server := &http.Server{
+		Addr:              net.JoinHostPort("localhost", httpPort),
+		Handler:           r,
+		ReadHeaderTimeout: readHeaderTimeout,
+	}
+
+	go func() {
+		log.Printf("Http сервер запущен на порту %s", httpPort)
+		err = server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("Ошибка запуска сервера: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutdown Server ...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	err = server.Shutdown(ctx)
+	if err != nil {
+		log.Printf("Server Shutdown: %v", err)
+	}
+	log.Println("Сервер остановлен")
 }

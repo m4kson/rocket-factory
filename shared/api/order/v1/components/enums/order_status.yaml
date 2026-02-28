@@ -2,9 +2,7 @@ type: string
 description: Статус заказа
 default: unknown
 enum:
-  - unknown
-  - pending
-  - paid
-  - cancelled
-  - failed
-  - delivered
+  - UNKNOWN
+  - PENDING_PAYMENT
+  - PAID
+  - CANCELLED

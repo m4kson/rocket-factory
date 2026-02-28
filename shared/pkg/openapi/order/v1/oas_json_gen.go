@@ -1151,18 +1151,14 @@ func (s *OrderStatus) Decode(d *jx.Decoder) error {
 	}
 	// Try to use constant string.
 	switch OrderStatus(v) {
-	case OrderStatusUnknown:
-		*s = OrderStatusUnknown
-	case OrderStatusPending:
-		*s = OrderStatusPending
-	case OrderStatusPaid:
-		*s = OrderStatusPaid
-	case OrderStatusCancelled:
-		*s = OrderStatusCancelled
-	case OrderStatusFailed:
-		*s = OrderStatusFailed
-	case OrderStatusDelivered:
-		*s = OrderStatusDelivered
+	case OrderStatusUNKNOWN:
+		*s = OrderStatusUNKNOWN
+	case OrderStatusPENDINGPAYMENT:
+		*s = OrderStatusPENDINGPAYMENT
+	case OrderStatusPAID:
+		*s = OrderStatusPAID
+	case OrderStatusCANCELLED:
+		*s = OrderStatusCANCELLED
 	default:
 		*s = OrderStatus(v)
 	}
@@ -1389,16 +1385,16 @@ func (s *PaymentMethod) Decode(d *jx.Decoder) error {
 	}
 	// Try to use constant string.
 	switch PaymentMethod(v) {
-	case PaymentMethodUnknown:
-		*s = PaymentMethodUnknown
-	case PaymentMethodCard:
-		*s = PaymentMethodCard
-	case PaymentMethodSbp:
-		*s = PaymentMethodSbp
-	case PaymentMethodCreditCard:
-		*s = PaymentMethodCreditCard
-	case PaymentMethodInvestorMoney:
-		*s = PaymentMethodInvestorMoney
+	case PaymentMethodUNKNOWN:
+		*s = PaymentMethodUNKNOWN
+	case PaymentMethodCARD:
+		*s = PaymentMethodCARD
+	case PaymentMethodSBP:
+		*s = PaymentMethodSBP
+	case PaymentMethodCREDITCARD:
+		*s = PaymentMethodCREDITCARD
+	case PaymentMethodINVESTORMONEY:
+		*s = PaymentMethodINVESTORMONEY
 	default:
 		*s = PaymentMethod(v)
 	}

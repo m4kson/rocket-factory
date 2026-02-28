@@ -26,7 +26,7 @@ message Part {
   string uuid = 1;
   string name = 2;
   string description = 3;
-  double price = 4;
+  float price = 4;
   int64 stock_quantity = 5;
   Category category = 6;
   Dimensions dimensions = 7;
