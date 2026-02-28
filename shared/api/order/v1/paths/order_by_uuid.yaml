@@ -1,0 +1,53 @@
+parameters:
+  - $ref: ../params/order_uuid.yaml
+
+get:
+  summary: "Получить информацию о заказе по UUID"
+  operationId: "getOrderByUUID"
+  tags:
+    - Order
+  responses:
+    200:
+        description: "Информация о заказе успешно получена"
+        content:
+          application/json:
+            schema:
+              $ref: ../components/get_order_response.yaml
+    401:
+        description: "Unauthorized - пользователь не авторизован"
+        content:
+          application/json:
+            schema:
+                $ref: ../components/errors/unauthorized_error.yaml
+    403:
+        description: "Forbidden - у пользователя нет прав доступа к заказу"
+        content:
+          application/json:
+            schema:
+                $ref: ../components/errors/forbidden_error.yaml
+    404:
+        description: "Not Found - заказ с указанным UUID не найден"
+        content:
+          application/json:
+            schema:
+                $ref: ../components/errors/not_found_error.yaml
+    429:
+        description: "Too Many Requests - превышен лимит запросов"
+        content:
+          application/json:
+            schema:
+                $ref: ../components/errors/rate_limit_error.yaml
+    500:
+        description: "Internal Server Error - внутренняя ошибка сервера"
+        content:
+          application/json:
+            schema:
+                $ref: ../components/errors/internal_server_error.yaml
+    502:
+        description: "Bad Gateway - ошибка шлюза"
+        content:
+          application/json:
+            schema:
+                $ref: ../components/errors/bad_gateway_error.yaml
+
+

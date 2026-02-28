@@ -1,0 +1,13 @@
+type: object
+required:
+  - code
+  - message
+properties:
+    code:
+        type: integer
+        description: HTTP status code representing the error type (e.g., 502 for Bad Gateway).
+        example: 502
+    message:
+        type: string
+        description: A human-readable message providing more details about the error.
+        example: "Bad Gateway: The server received an invalid response from the upstream server."

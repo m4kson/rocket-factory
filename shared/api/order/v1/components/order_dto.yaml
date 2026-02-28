@@ -1,0 +1,45 @@
+type: object
+required:
+    - order_uuid
+    - user_uuid
+    - part_uuids
+    - total_price
+    - status
+properties:
+    order_uuid:
+        type: string
+        format: uuid
+        description: Уникальный идентификатор заказа.
+        example: "123e4567-e89b-12d3-a456-426614174000"
+    user_uuid:
+        type: string
+        format: uuid
+        description: Уникальный идентификатор пользователя, который создал заказ.
+        example: "123e4567-e89b-12d3-a456-426614174000"
+    part_uuids:
+        type: array
+        items:
+            type: string
+            format: uuid
+        description: Список уникальных идентификаторов деталей, включенных в заказ.
+        example: ["123e4567-e89b-12d3-a456-426614174000", "123e4567-e89b-12d3-a456-426614174001"]
+    total_price:
+        type: number
+        format: float
+        description: Общая стоимость заказа, рассчитанная на основе цен деталей и их количества.
+        example: 199.99
+    transaction_uuid:
+        type: string
+        format: uuid
+        description: Идентификатор транзакции, который был сгенерирован при оплате заказа.
+        example: "123e4567-e89b-12d3-a456-426614174000"
+    payment_method:
+        allOf:
+          - $ref: ./enums/payment_method.yaml
+        description: Метод оплаты, который был использован для оплаты заказа.
+        example: "card"
+    status:
+        allOf:
+          - $ref: ./enums/order_status.yaml
+        description: Текущий статус заказа, который может изменяться в процессе его обработки.
+        example: "paid"
