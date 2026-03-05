@@ -24,6 +24,10 @@ func PartToProto(part model.Part) *inventoryV1.Part {
 }
 
 func FilterToModel(filter *inventoryV1.PartsFilter) model.PartsFilter {
+	if filter == nil {
+		return model.PartsFilter{}
+	}
+
 	var ids []uuid.UUID
 	if filter.Uuids != nil {
 		for _, id := range filter.GetUuids() {
