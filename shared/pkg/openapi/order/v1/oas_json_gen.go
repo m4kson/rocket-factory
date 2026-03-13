@@ -733,8 +733,10 @@ func (s *GetOrderResponse) encodeFields(e *jx.Encoder) {
 		e.Float32(s.TotalPrice)
 	}
 	{
-		e.FieldStart("transaction_uuid")
-		json.EncodeUUID(e, s.TransactionUUID)
+		if s.TransactionUUID.Set {
+			e.FieldStart("transaction_uuid")
+			s.TransactionUUID.Encode(e)
+		}
 	}
 	{
 		e.FieldStart("payment_method")
@@ -822,11 +824,9 @@ func (s *GetOrderResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"total_price\"")
 			}
 		case "transaction_uuid":
-			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.TransactionUUID = v
-				if err != nil {
+				s.TransactionUUID.Reset()
+				if err := s.TransactionUUID.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -863,7 +863,7 @@ func (s *GetOrderResponse) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b01111111,
+		0b01101111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -1131,6 +1131,41 @@ func (s *NotFoundError) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *NotFoundError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes uuid.UUID as json.
+func (o OptUUID) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	json.EncodeUUID(e, o.Value)
+}
+
+// Decode decodes uuid.UUID from json.
+func (o *OptUUID) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptUUID to nil")
+	}
+	o.Set = true
+	v, err := json.DecodeUUID(d)
+	if err != nil {
+		return err
+	}
+	o.Value = v
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptUUID) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptUUID) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

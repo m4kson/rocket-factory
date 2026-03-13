@@ -212,7 +212,7 @@ type GetOrderResponse struct {
 	TotalPrice float32 `json:"total_price"`
 	// Идентификатор транзакции, который был сгенерирован
 	// при оплате заказа.
-	TransactionUUID uuid.UUID `json:"transaction_uuid"`
+	TransactionUUID OptUUID `json:"transaction_uuid"`
 	// Метод оплаты, который был использован для оплаты
 	// заказа.
 	PaymentMethod PaymentMethod `json:"payment_method"`
@@ -242,7 +242,7 @@ func (s *GetOrderResponse) GetTotalPrice() float32 {
 }
 
 // GetTransactionUUID returns the value of TransactionUUID.
-func (s *GetOrderResponse) GetTransactionUUID() uuid.UUID {
+func (s *GetOrderResponse) GetTransactionUUID() OptUUID {
 	return s.TransactionUUID
 }
 
@@ -277,7 +277,7 @@ func (s *GetOrderResponse) SetTotalPrice(val float32) {
 }
 
 // SetTransactionUUID sets the value of TransactionUUID.
-func (s *GetOrderResponse) SetTransactionUUID(val uuid.UUID) {
+func (s *GetOrderResponse) SetTransactionUUID(val OptUUID) {
 	s.TransactionUUID = val
 }
 
@@ -357,6 +357,52 @@ func (s *NotFoundError) SetMessage(val string) {
 func (*NotFoundError) cancelOrderByUUIDRes() {}
 func (*NotFoundError) getOrderByUUIDRes()    {}
 func (*NotFoundError) payOrderByUUIDRes()    {}
+
+// NewOptUUID returns new OptUUID with value set to v.
+func NewOptUUID(v uuid.UUID) OptUUID {
+	return OptUUID{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptUUID is optional uuid.UUID.
+type OptUUID struct {
+	Value uuid.UUID
+	Set   bool
+}
+
+// IsSet returns true if OptUUID was set.
+func (o OptUUID) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptUUID) Reset() {
+	var v uuid.UUID
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptUUID) SetTo(v uuid.UUID) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptUUID) Get() (v uuid.UUID, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptUUID) Or(d uuid.UUID) uuid.UUID {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
 
 // Статус заказа.
 // Ref: #/components/schemas/order_status
