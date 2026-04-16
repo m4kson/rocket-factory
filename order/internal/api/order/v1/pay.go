@@ -11,7 +11,7 @@ import (
 	orderV1 "github.com/m4kson/rocket-factory/shared/pkg/openapi/order/v1"
 )
 
-func (a *api) PayOrderById(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderByUUIDParams) (orderV1.PayOrderByUUIDRes, error) {
+func (a *api) PayOrderByUUID(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderByUUIDParams) (orderV1.PayOrderByUUIDRes, error) {
 	userId := ctx.Value("user_id").(string)
 	transaction, err := a.orderService.PayOrderById(ctx, params.OrderUUID, converter.PaymentMethodToModel(req.PaymentMethod), uuid.MustParse(userId))
 	if err != nil {

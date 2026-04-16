@@ -13,21 +13,22 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/m4kson/rocket-factory/order/internal/client/grpc/inventory"
-	"github.com/m4kson/rocket-factory/order/internal/client/grpc/payment"
-	ordersService "github.com/m4kson/rocket-factory/order/internal/service/orders"
-	ordersRepo "github.com/m4kson/rocket-factory/order/internal/repository/orders"
 	ordersApi "github.com/m4kson/rocket-factory/order/internal/api/order/v1"
+	inventoryClient "github.com/m4kson/rocket-factory/order/internal/client/grpc/inventory"
+	paymentClient "github.com/m4kson/rocket-factory/order/internal/client/grpc/payment"
+	ordersRepo "github.com/m4kson/rocket-factory/order/internal/repository/orders"
+	ordersService "github.com/m4kson/rocket-factory/order/internal/service/orders"
 	orderV1 "github.com/m4kson/rocket-factory/shared/pkg/openapi/order/v1"
 	inventoryV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/inventory/v1"
 	paymentV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/payment/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/reflection"
 )
 
 const (
-	httpPort = "8080"
+	httpPort          = "8080"
+	inventoryGRPCAddr = "inventory:50051"
+	paymentGRPCAddr   = "payment:50052"
 	// Таймауты для HTTP-сервера
 	readHeaderTimeout = 5 * time.Second
 	shutdownTimeout   = 10 * time.Second
@@ -216,31 +217,33 @@ const (
 //}
 
 func main() {
-	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	inventoryConn, err := grpc.NewClient(
+		inventoryGRPCAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
-		log.Fatalf("Failed to connect to payment service: %v", err)
+		log.Fatalf("failed to create inventory grpc connection: %v", err)
 	}
-	defer conn.Close()
+	defer inventoryConn.Close()
 
-	paymentClient := payment.NewClient(paymentV1.NewPaymentServiceClient(conn))
+	paymentConn, err := grpc.NewClient(
+		paymentGRPCAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
-		log.Fatalf("Failed to create payment client: %v", err)
+		log.Fatalf("failed to create payment grpc connection: %v", err)
 	}
+	defer paymentConn.Close()
 
-	inventoryClient := inventory.NewClient(inventoryV1.NewInventoryServiceClient(conn))
-	if err != nil {
-		log.Fatalf("Failed to create inventory client: %v", err)
-	}
+	invClient := inventoryClient.NewClient(inventoryV1.NewInventoryServiceClient(inventoryConn))
+	payClient := paymentClient.NewClient(paymentV1.NewPaymentServiceClient(paymentConn))
 
 	orderRepository := ordersRepo.NewRepository()
-	orderService := ordersService.NewOrderService(orderRepository, paymentClient, inventoryClient)
-	orderApi := ordersApi.NewAPI(orderService)
+	orderService := ordersService.NewOrderService(orderRepository, payClient, invClient)
 
-	orderHandler := 
-
-	orderServer, err := orderV1.NewServer(orderHandler)
+	ogenServer, err := orderV1.NewServer(ordersApi.NewAPI(orderService))
 	if err != nil {
-		log.Fatalf("Failed to create order server: %v", err)
+		log.Fatal("can't create ogen server")
 	}
 
 	r := chi.NewRouter()
@@ -249,12 +252,12 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	r.Mount("/api/v1", orderServer)
+	r.Mount("/api/v1", ogenServer)
 
 	server := &http.Server{
-		Addr:    net.JoinHostPort("localhost", httpPort),
-		Handler: r,
-		ReadTimeout:  readHeaderTimeout,
+		Addr:        net.JoinHostPort("localhost", httpPort),
+		Handler:     r,
+		ReadTimeout: readHeaderTimeout,
 	}
 
 	go func() {

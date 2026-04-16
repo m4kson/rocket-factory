@@ -9,7 +9,7 @@ import (
 	orderV1 "github.com/m4kson/rocket-factory/shared/pkg/openapi/order/v1"
 )
 
-func (a *api) CancelOrderById(ctx context.Context, params orderV1.CancelOrderByUUIDParams) (orderV1.CancelOrderByUUIDRes, error) {
+func (a *api) CancelOrderByUUID(ctx context.Context, params orderV1.CancelOrderByUUIDParams) (orderV1.CancelOrderByUUIDRes, error) {
 	err := a.orderService.CancelOrderById(ctx, params.OrderUUID)
 	if err != nil {
 		if errors.Is(err, model.ErrOrderNotFound) {
