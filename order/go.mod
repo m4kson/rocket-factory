@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/brianvoe/gofakeit/v7 v7.14.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -25,6 +26,7 @@ require (
 	github.com/ogen-go/ogen v1.19.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
+	github.com/stretchr/objx v0.5.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.40.0 // indirect
 	go.opentelemetry.io/otel/metric v1.40.0 // indirect

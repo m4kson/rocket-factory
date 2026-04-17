@@ -18,6 +18,8 @@ func (a *api) GetPart(ctx context.Context, request *inventoryV1.GetPartRequest) 
 		if errors.Is(err, model.ErrPartNotFound) {
 			return &inventoryV1.GetPartResponse{}, status.Errorf(codes.NotFound, "part: %s not found", partId)
 		}
+
+		return nil, err
 	}
 
 	return &inventoryV1.GetPartResponse{
