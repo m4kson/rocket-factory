@@ -1,10 +1,9 @@
 package orders
 
 import (
+	grpc "github.com/m4kson/rocket-factory/order/internal/client/grpc"
 	"github.com/m4kson/rocket-factory/order/internal/repository"
 	def "github.com/m4kson/rocket-factory/order/internal/service"
-
-	grpc "github.com/m4kson/rocket-factory/order/internal/client/grpc"
 )
 
 var _ def.OrderService = (*service)(nil)

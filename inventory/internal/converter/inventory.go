@@ -16,20 +16,6 @@ func GetPartRequestToModel(request *inventoryV1.GetPartRequest) uuid.UUID {
 	return id
 }
 
-//
-//string uuid = 1;
-//string name = 2;
-//string description = 3;
-//float price = 4;
-//int64 stock_quantity = 5;
-//Category category = 6;
-//Dimensions dimensions = 7;
-//Manufacturer manufacturer = 8;
-//repeated string tags = 9;
-//map<string, Value> metadata = 10;
-//google.protobuf.Timestamp created_at = 11;
-//google.protobuf.Timestamp updated_at = 12;
-
 func PartToProto(part model.Part) *inventoryV1.Part {
 	return &inventoryV1.Part{
 		Uuid:          part.PartId.String(),

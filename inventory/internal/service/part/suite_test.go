@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/m4kson/rocket-factory/inventory/internal/repository/mocks"
+	"github.com/stretchr/testify/suite"
 )
 
 type ServiceSuite struct {

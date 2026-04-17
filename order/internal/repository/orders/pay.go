@@ -12,7 +12,7 @@ func (r *repository) PayOrderById(ctx context.Context, orderId uuid.UUID, paymen
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	order, _ := r.orders[orderId.String()]
+	order := r.orders[orderId.String()]
 
 	order.PaymentMethod = repoModel.PaymentMethod(paymentMethod)
 	order.Status = repoModel.OrderStatusPAID

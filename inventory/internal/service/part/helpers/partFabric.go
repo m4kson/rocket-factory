@@ -17,11 +17,13 @@ func CreatePart() model.Part {
 		Dimensions: model.Dimensions{
 			Weight: gofakeit.Float64(),
 			Length: gofakeit.Float64(),
-			Width:  gofakeit.Float64()},
+			Width:  gofakeit.Float64(),
+		},
 		Manufacturer: model.Manufacturer{
 			Name:    gofakeit.Company(),
 			Country: gofakeit.Country(),
-			Website: gofakeit.URL()},
+			Website: gofakeit.URL(),
+		},
 		Tags:      []string{gofakeit.Word(), gofakeit.Word()},
 		Metadata:  map[string]model.Value{"key": gofakeit.Word()},
 		CreatedAt: gofakeit.Date(),
