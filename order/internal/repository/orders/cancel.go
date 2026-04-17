@@ -15,6 +15,7 @@ func (r *repository) CancelOrderById(ctx context.Context, orderId uuid.UUID) err
 	}
 
 	if order.Status == repoModel.OrderStatusPAID {
+
 		return model.ErrOrderAlreadyPaid
 	}
 

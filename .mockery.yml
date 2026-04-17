@@ -23,6 +23,10 @@ packages:
     config:
       include-regex: ".*Repository"
 
+  github.com/m4kson/rocket-factory/order/internal/client/grpc:
+    config:
+      include-regex: ".*Client"
+
   github.com/m4kson/rocket-factory/payment/internal/service:
     config:
       include-regex: ".*Service"
