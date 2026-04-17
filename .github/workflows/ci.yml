@@ -33,7 +33,7 @@ jobs:
 
   test:
     uses: ./.github/workflows/test_reusable.yml
-    needs: lint
+    needs: extract-vars
     with:
       modules: ${{ needs.extract-vars.outputs.modules }}
       go-version: ${{ needs.extract-vars.outputs.go-version }}
