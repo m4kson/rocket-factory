@@ -23,6 +23,7 @@ profile.cov
 
 # env file
 .env
+deploy/compose/order/.env
 
 # Editor/IDE
 /.idea

@@ -1,0 +1,12 @@
+services:
+  placeholder:
+    image: alpine
+    command:
+      ["sh", "-c", "echo 'This is a placeholder service' && sleep infinity"]
+    networks:
+      - factory-network
+
+networks:
+  factory-network:
+    name: factory-network
+    external: false
