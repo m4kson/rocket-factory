@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/m4kson/rocket-factory/order/internal/model"
@@ -9,9 +10,6 @@ import (
 )
 
 func (r *repository) CreateOrder(ctx context.Context, request repoModel.CreateOrderRequest) (model.CreateOrderRes, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	orderId := uuid.New()
 
 	order := repoModel.Order{
@@ -24,7 +22,20 @@ func (r *repository) CreateOrder(ctx context.Context, request repoModel.CreateOr
 		Status:        request.Status,
 	}
 
-	r.orders[orderId.String()] = order
+	_, err := r.pool.Exec(
+		ctx,
+		"INSERT INTO orders (id, user_id, parts_ids, total_price, transaction_id, payment_method, status) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		order.OrderId,
+		order.UserId,
+		order.PartsIds,
+		order.TotalPrice,
+		order.TransactionId,
+		order.PaymentMethod,
+		order.Status,
+	)
+	if err != nil {
+		return model.CreateOrderRes{}, fmt.Errorf("repository.CreateOrder: %w", err)
+	}
 
 	return model.CreateOrderRes{
 		OrderId:    orderId,

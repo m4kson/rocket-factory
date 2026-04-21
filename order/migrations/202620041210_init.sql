@@ -25,7 +25,7 @@ create table orders (
     transaction_id uuid,
     payment_method payment_method NOT NULL DEFAULT 'UNKNOWN',
     status order_status NOT NULL DEFAULT 'UNKNOWN'
-)
+);
 -- +goose StatementEnd
 
 -- +goose Down

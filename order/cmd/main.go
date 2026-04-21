@@ -8,17 +8,19 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	ordersApi "github.com/m4kson/rocket-factory/order/internal/api/order/v1"
 	inventoryClient "github.com/m4kson/rocket-factory/order/internal/client/grpc/inventory"
 	paymentClient "github.com/m4kson/rocket-factory/order/internal/client/grpc/payment"
+	"github.com/m4kson/rocket-factory/order/internal/db/postgres"
 	"github.com/m4kson/rocket-factory/order/internal/migrator"
 	ordersRepo "github.com/m4kson/rocket-factory/order/internal/repository/orders"
 	ordersService "github.com/m4kson/rocket-factory/order/internal/service/orders"
@@ -69,20 +71,33 @@ func main() {
 		log.Printf("Error loading .env file")
 	}
 
-	dbURI := os.Getenv("DATABASE_URL")
-
-	pool, err := pgxpool.New(ctx, dbURI)
+	dbPort, err := strconv.Atoi(os.Getenv("POSTGRES_PORT"))
 	if err != nil {
-		log.Printf("failed to connect to postgres: %v", err)
+		log.Printf("Can't read data base port from .env: %v\n", err)
+		return
+	}
+
+	pool, err := postgres.NewPool(ctx, postgres.Config{
+		Host:     os.Getenv("POSTGRES_HOST"),
+		Port:     dbPort,
+		User:     os.Getenv("POSTGRES_USER"),
+		Password: os.Getenv("POSTGRES_PASSWORD"),
+		DBName:   os.Getenv("POSTGRES_DB"),
+
+		MaxConns:          int32(runtime.NumCPU() * 4),
+		MinConns:          2,
+		MaxConnLifetime:   time.Hour,
+		MaxConnIdleTime:   30 * time.Minute,
+		HealthCehckPeriod: time.Minute,
+	})
+
+	if err != nil {
+		log.Printf("Ошибка подключения к базе данных: %v\n", err)
 		return
 	}
 	defer pool.Close()
 
-	err = pool.Ping(ctx)
-	if err != nil {
-		log.Printf("База данных недоступна: %v\n", err)
-		return
-	}
+	log.Printf("connected to database %s on %s:%d as user %s\n", os.Getenv("POSTGRES_DB"), os.Getenv("POSTGRES_HOST"), dbPort, os.Getenv("POSTGRES_USER"))
 
 	migrationsPath := os.Getenv("MIGRATIONS_PATH")
 	migrationRunner := migrator.NewMigrator(stdlib.OpenDB(*pool.Config().ConnConfig), migrationsPath)
@@ -93,7 +108,7 @@ func main() {
 		return
 	}
 
-	orderRepository := ordersRepo.NewRepository()
+	orderRepository := ordersRepo.NewRepository(pool)
 	orderService := ordersService.NewOrderService(orderRepository, payClient, invClient)
 
 	ogenServer, err := orderV1.NewServer(ordersApi.NewAPI(orderService))
