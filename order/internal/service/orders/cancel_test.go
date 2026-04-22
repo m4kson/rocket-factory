@@ -8,6 +8,7 @@ import (
 func (s *ServiceSuite) TestCancelOrderSuccess() {
 	orderId := uuid.New()
 	s.orderRepository.On("CancelOrderById", s.ctx, orderId).Return(nil)
+	s.orderRepository.On("GetOrderById", s.ctx, orderId).Return(model.GetOrderResponse{}, nil)
 
 	err := s.service.CancelOrderById(s.ctx, orderId)
 
@@ -16,7 +17,8 @@ func (s *ServiceSuite) TestCancelOrderSuccess() {
 
 func (s *ServiceSuite) TestCancelOrderNotFound() {
 	orderId := uuid.New()
-	s.orderRepository.On("CancelOrderById", s.ctx, orderId).Return(model.ErrOrderNotFound)
+
+	s.orderRepository.On("GetOrderById", s.ctx, orderId).Return(model.GetOrderResponse{}, model.ErrOrderNotFound)
 
 	err := s.service.CancelOrderById(s.ctx, orderId)
 
@@ -27,6 +29,7 @@ func (s *ServiceSuite) TestCancelOrderAlreadyPaid() {
 	orderId := uuid.New()
 
 	s.orderRepository.On("CancelOrderById", s.ctx, orderId).Return(model.ErrOrderAlreadyPaid)
+	s.orderRepository.On("GetOrderById", s.ctx, orderId).Return(model.GetOrderResponse{}, nil)
 
 	err := s.service.CancelOrderById(s.ctx, orderId)
 

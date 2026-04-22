@@ -1,13 +1,14 @@
 package converter
 
 import (
+	"github.com/google/uuid"
 	"github.com/m4kson/rocket-factory/inventory/internal/model"
 	repoModel "github.com/m4kson/rocket-factory/inventory/internal/repository/model"
 )
 
 func PartToRepoModel(part model.Part) repoModel.Part {
 	return repoModel.Part{
-		PartId:        part.PartId,
+		PartId:        part.PartId.String(),
 		Name:          part.Name,
 		Description:   part.Description,
 		Price:         part.Price,
@@ -81,8 +82,13 @@ func ValueToRepoModel(value model.Value) repoModel.Value {
 }
 
 func PartToModel(part repoModel.Part) model.Part {
+	partId, err := uuid.Parse(part.PartId)
+	if err != nil {
+		partId = uuid.Nil
+	}
+
 	return model.Part{
-		PartId:        part.PartId,
+		PartId:        partId,
 		Name:          part.Name,
 		Description:   part.Description,
 		Price:         part.Price,
