@@ -2,93 +2,66 @@ package part
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/m4kson/rocket-factory/inventory/internal/model"
 	"github.com/m4kson/rocket-factory/inventory/internal/repository/converter"
+	repoModel "github.com/m4kson/rocket-factory/inventory/internal/repository/model"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (r *repository) ListParts(ctx context.Context, filter model.PartsFilter) ([]model.Part, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	mongoFilter := bson.D{}
 
-	results := make([]model.Part, 0, len(r.parts))
-	for _, p := range r.parts {
-		if len(filter.Ids) > 0 {
-			matched := false
-			for _, u := range filter.Ids {
-				if p.PartId == u {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				continue
-			}
+	if filter.Ids != nil && len(filter.Ids) > 0 {
+		for i := range filter.Ids {
+			mongoFilter = append(mongoFilter, bson.E{Key: "part_id", Value: filter.Ids[i].String()})
 		}
-
-		// names
-		if len(filter.Names) > 0 {
-			matched := false
-			for _, n := range filter.Names {
-				if p.Name == n {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				continue
-			}
-		}
-
-		// categories
-		if len(filter.Categories) > 0 {
-			matched := false
-			for _, c := range filter.Categories {
-				if p.Category == converter.CategoryToRepoModel(c) {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				continue
-			}
-		}
-
-		// manufacturer_countries
-		if len(filter.ManufacturerCountries) > 0 {
-			matched := false
-			for _, mc := range filter.ManufacturerCountries {
-				if p.Manufacturer.Country == mc {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				continue
-			}
-		}
-
-		// tags (ищем пересечение тегов)
-		if len(filter.Tags) > 0 {
-			matched := false
-			for _, ft := range filter.Tags {
-				for _, pt := range p.Tags {
-					if pt == ft {
-						matched = true
-						break
-					}
-				}
-				if matched {
-					break
-				}
-			}
-			if !matched {
-				continue
-			}
-		}
-
-		results = append(results, converter.PartToModel(p))
 	}
 
-	return results, nil
+	if filter.Names != nil && len(filter.Names) > 0 {
+		for i := range filter.Names {
+			mongoFilter = append(mongoFilter, bson.E{Key: "name", Value: filter.Names[i]})
+		}
+	}
+
+	if filter.Categories != nil && len(filter.Categories) > 0 {
+		for i := range filter.Categories {
+			mongoFilter = append(mongoFilter, bson.E{Key: "category", Value: converter.CategoryToRepoModel(filter.Categories[i])})
+		}
+	}
+
+	if filter.ManufacturerCountries != nil && len(filter.ManufacturerCountries) > 0 {
+		for i := range filter.ManufacturerCountries {
+			mongoFilter = append(mongoFilter, bson.E{Key: "manufacturer.country", Value: filter.ManufacturerCountries[i]})
+		}
+	}
+
+	if filter.Tags != nil && len(filter.Tags) > 0 {
+		for i := range filter.Tags {
+			mongoFilter = append(mongoFilter, bson.E{Key: "tags", Value: filter.Tags[i]})
+		}
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "created_at", Value: -1}})
+
+	cursor, err := r.col.Find(ctx, mongoFilter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("repository.ListParts: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var rows []repoModel.Part
+	if err = cursor.All(ctx, &rows); err != nil {
+		return nil, fmt.Errorf("repository.ListParts: %w", err)
+	}
+
+	orders := make([]model.Part, 0, len(rows))
+	for _, row := range rows {
+		orders = append(orders, converter.PartToModel(row))
+	}
+
+	return orders, nil
 }

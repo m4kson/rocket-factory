@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	inventoryAPI "github.com/m4kson/rocket-factory/inventory/internal/api/inventory/v1"
+	mongodb "github.com/m4kson/rocket-factory/inventory/internal/db/mongo"
 	inventoryRepository "github.com/m4kson/rocket-factory/inventory/internal/repository/part"
 	inventoryService "github.com/m4kson/rocket-factory/inventory/internal/service/part"
 	inventoryV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/inventory/v1"
@@ -19,6 +22,7 @@ import (
 const grpcPort = "50052"
 
 func main() {
+	ctx := context.Background()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 	if err != nil {
 		log.Printf("failed to listen: %v\n", err)
@@ -27,7 +31,26 @@ func main() {
 
 	s := grpc.NewServer()
 
-	repo := inventoryRepository.NewPartRepository()
+	mongoClient, err := mongodb.NewClient(ctx, mongodb.Config{
+		URI:             os.Getenv("MONGO_URI"),
+		Database:        os.Getenv("MONGO_DATABASE"),
+		ConnectTimeout:  10 * time.Second,
+		MaxPoolSize:     100,
+		MinPoolSize:     2,
+		MaxConnIdleTime: 10 * time.Second,
+	})
+
+	if err != nil {
+		log.Printf("failed to connect to MongoDB: %v\n", err)
+		return
+	}
+	defer mongoClient.Disconnect(ctx)
+
+	log.Print("connected to mongodb")
+
+	inventoryCol := mongoClient.Collection("inventory")
+
+	repo := inventoryRepository.NewPartRepository(inventoryCol)
 	service := inventoryService.NewPartService(repo)
 	api := inventoryAPI.NewAPI(service)
 
