@@ -55,6 +55,10 @@ func main() {
 	log.Print("connected to mongodb")
 
 	inventoryCol := mongoClient.Collection("inventory")
+	if err = mongodb.EnsureIndexes(ctx, inventoryCol); err != nil {
+		log.Printf("failed to ensure indexes: %v\n", err)
+		return
+	}
 
 	repo := inventoryRepository.NewPartRepository(inventoryCol)
 	service := inventoryService.NewPartService(repo)
