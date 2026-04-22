@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	inventoryAPI "github.com/m4kson/rocket-factory/inventory/internal/api/inventory/v1"
 	mongodb "github.com/m4kson/rocket-factory/inventory/internal/db/mongo"
 	inventoryRepository "github.com/m4kson/rocket-factory/inventory/internal/repository/part"
@@ -31,9 +32,14 @@ func main() {
 
 	s := grpc.NewServer()
 
+	err = godotenv.Load("../deploy/compose/inventory/.env")
+	if err != nil {
+		log.Printf("Error loading .env file")
+	}
+
 	mongoClient, err := mongodb.NewClient(ctx, mongodb.Config{
 		URI:             os.Getenv("MONGO_URI"),
-		Database:        os.Getenv("MONGO_DATABASE"),
+		Database:        os.Getenv("MONGO_INITDB_DATABASE"),
 		ConnectTimeout:  10 * time.Second,
 		MaxPoolSize:     100,
 		MinPoolSize:     2,

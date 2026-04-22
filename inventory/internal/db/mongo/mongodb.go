@@ -7,7 +7,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type Config struct {
@@ -42,7 +41,7 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 	pingCtx, cancel := context.WithTimeout(ctx, cfg.ConnectTimeout)
 	defer cancel()
 
-	if err = client.Ping(pingCtx, readpref.Primary()); err != nil {
+	if err = client.Ping(pingCtx, nil); err != nil {
 		_ = client.Disconnect(ctx)
 		return nil, fmt.Errorf("mongo: ping failed: %w", err)
 	}
