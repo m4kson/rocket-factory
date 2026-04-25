@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -16,10 +17,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/joho/godotenv"
 	ordersApi "github.com/m4kson/rocket-factory/order/internal/api/order/v1"
 	inventoryClient "github.com/m4kson/rocket-factory/order/internal/client/grpc/inventory"
 	paymentClient "github.com/m4kson/rocket-factory/order/internal/client/grpc/payment"
+	"github.com/m4kson/rocket-factory/order/internal/config"
 	"github.com/m4kson/rocket-factory/order/internal/db/postgres"
 	"github.com/m4kson/rocket-factory/order/internal/migrator"
 	ordersRepo "github.com/m4kson/rocket-factory/order/internal/repository/orders"
@@ -31,20 +32,18 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const (
-	httpPort          = "8080"
-	inventoryGRPCAddr = "inventory:50051"
-	paymentGRPCAddr   = "payment:50052"
-	// Таймауты для HTTP-сервера
-	readHeaderTimeout = 5 * time.Second
-	shutdownTimeout   = 10 * time.Second
-)
+const configPath = "../deploy/compose/order/.env"
 
 func main() {
+	err := config.Load(configPath)
+	if err != nil {
+		panic(fmt.Errorf("failed to load config: %w", err))
+	}
+
 	ctx := context.Background()
 
 	inventoryConn, err := grpc.NewClient(
-		inventoryGRPCAddr,
+		config.AppConfig().GrpcClient.InventoryGrpcAddr(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -54,7 +53,7 @@ func main() {
 	defer inventoryConn.Close()
 
 	paymentConn, err := grpc.NewClient(
-		paymentGRPCAddr,
+		config.AppConfig().GrpcClient.PaymentGrpcAddr(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -66,23 +65,18 @@ func main() {
 	invClient := inventoryClient.NewClient(inventoryV1.NewInventoryServiceClient(inventoryConn))
 	payClient := paymentClient.NewClient(paymentV1.NewPaymentServiceClient(paymentConn))
 
-	err = godotenv.Load("../deploy/compose/order/.env")
-	if err != nil {
-		log.Printf("Error loading .env file")
-	}
-
-	dbPort, err := strconv.Atoi(os.Getenv("POSTGRES_PORT"))
+	dbPort, err := strconv.Atoi(config.AppConfig().Postgres.Port())
 	if err != nil {
 		log.Printf("Can't read data base port from .env: %v\n", err)
 		return
 	}
 
 	pool, err := postgres.NewPool(ctx, postgres.Config{
-		Host:     os.Getenv("POSTGRES_HOST"),
+		Host:     config.AppConfig().Postgres.Host(),
 		Port:     dbPort,
-		User:     os.Getenv("POSTGRES_USER"),
-		Password: os.Getenv("POSTGRES_PASSWORD"),
-		DBName:   os.Getenv("POSTGRES_DB"),
+		User:     config.AppConfig().Postgres.User(),
+		Password: config.AppConfig().Postgres.Password(),
+		DBName:   config.AppConfig().Postgres.DbName(),
 
 		MaxConns:          int32(runtime.NumCPU() * 4),
 		MinConns:          2,
@@ -99,7 +93,7 @@ func main() {
 
 	log.Printf("connected to database %s on %s:%d as user %s\n", os.Getenv("POSTGRES_DB"), os.Getenv("POSTGRES_HOST"), dbPort, os.Getenv("POSTGRES_USER"))
 
-	migrationsPath := os.Getenv("MIGRATIONS_PATH")
+	migrationsPath := config.AppConfig().Postgres.MigrationsPath()
 	migrationRunner := migrator.NewMigrator(stdlib.OpenDB(*pool.Config().ConnConfig), migrationsPath)
 
 	err = migrationRunner.Up()
@@ -125,16 +119,16 @@ func main() {
 	r.Mount("/api/v1", ogenServer)
 
 	server := &http.Server{
-		Addr:        net.JoinHostPort("localhost", httpPort),
+		Addr:        net.JoinHostPort("localhost", config.AppConfig().HttpServer.Port()),
 		Handler:     r,
-		ReadTimeout: readHeaderTimeout,
+		ReadTimeout: config.AppConfig().HttpServer.ReadHeaderTimeout(),
 	}
 
 	go func() {
-		log.Printf("Listening on port %s", httpPort)
+		log.Printf("Listening on port %s", config.AppConfig().HttpServer.Port())
 		err = server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("Failed to listen on port %s: %v", httpPort, err)
+			log.Printf("Failed to listen on port %s: %v", config.AppConfig().HttpServer.Port(), err)
 		}
 	}()
 
@@ -143,7 +137,7 @@ func main() {
 	<-quit
 	log.Println("Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.AppConfig().HttpServer.ShutdownTimeout())
 	defer cancel()
 
 	err = server.Shutdown(ctx)
