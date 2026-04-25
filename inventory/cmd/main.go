@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
 	inventoryAPI "github.com/m4kson/rocket-factory/inventory/internal/api/inventory/v1"
+	"github.com/m4kson/rocket-factory/inventory/internal/config"
 	mongodb "github.com/m4kson/rocket-factory/inventory/internal/db/mongo"
 	inventoryRepository "github.com/m4kson/rocket-factory/inventory/internal/repository/part"
 	inventoryService "github.com/m4kson/rocket-factory/inventory/internal/service/part"
@@ -20,11 +20,16 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-const grpcPort = "50052"
+const configPath = "../deploy/compose/inventory/.env"
 
 func main() {
+	err := config.Load(configPath)
+	if err != nil {
+		panic(fmt.Errorf("failed to load config: %w", err))
+	}
+
 	ctx := context.Background()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", config.AppConfig().Grpc.Port()))
 	if err != nil {
 		log.Printf("failed to listen: %v\n", err)
 		return
@@ -32,14 +37,9 @@ func main() {
 
 	s := grpc.NewServer()
 
-	err = godotenv.Load("../deploy/compose/inventory/.env")
-	if err != nil {
-		log.Printf("Error loading .env file")
-	}
-
 	mongoClient, err := mongodb.NewClient(ctx, mongodb.Config{
-		URI:             os.Getenv("MONGO_URI"),
-		Database:        os.Getenv("MONGO_INITDB_DATABASE"),
+		URI:             config.AppConfig().Mongo.URL(),
+		Database:        config.AppConfig().Mongo.DbName(),
 		ConnectTimeout:  10 * time.Second,
 		MaxPoolSize:     100,
 		MinPoolSize:     2,
@@ -69,7 +69,7 @@ func main() {
 	reflection.Register(s)
 
 	go func() {
-		log.Printf("grpc server listening on %s\n", grpcPort)
+		log.Printf("grpc server listening on %s\n", config.AppConfig().Grpc.Port())
 		err := s.Serve(lis)
 		if err != nil {
 			log.Printf("failed to serve: %v\n", err)
