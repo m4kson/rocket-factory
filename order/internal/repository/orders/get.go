@@ -4,15 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/m4kson/rocket-factory/order/internal/model"
 	"github.com/m4kson/rocket-factory/order/internal/repository/converter"
 	repoModel "github.com/m4kson/rocket-factory/order/internal/repository/model"
+	logger "github.com/m4kson/rocket-factory/platform/pkg/logger/slogLog"
 )
 
 func (r *repository) GetOrderById(ctx context.Context, orderId uuid.UUID) (model.GetOrderResponse, error) {
+	log := logger.FromContext(ctx)
 
 	var row repoModel.Order
 
@@ -30,9 +33,11 @@ func (r *repository) GetOrderById(ctx context.Context, orderId uuid.UUID) (model
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			log.Warn("order not found", slog.String("orderId", orderId.String()))
 			return model.GetOrderResponse{}, model.ErrOrderNotFound
 		}
 
+		log.Error("failed to get order by id", slog.String("orderId", orderId.String()), slog.String("error", err.Error()))
 		return model.GetOrderResponse{}, fmt.Errorf("repository.GetOrderById orderId=%s: %w", orderId, err)
 	}
 

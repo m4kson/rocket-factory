@@ -3,13 +3,17 @@ package orders
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/m4kson/rocket-factory/order/internal/model"
 	repoModel "github.com/m4kson/rocket-factory/order/internal/repository/model"
+	logger "github.com/m4kson/rocket-factory/platform/pkg/logger/slogLog"
 )
 
 func (r *repository) CreateOrder(ctx context.Context, request repoModel.CreateOrderRequest) (model.CreateOrderRes, error) {
+	log := logger.FromContext(ctx)
+
 	orderId := uuid.New()
 
 	order := repoModel.Order{
@@ -34,6 +38,7 @@ func (r *repository) CreateOrder(ctx context.Context, request repoModel.CreateOr
 		order.Status,
 	)
 	if err != nil {
+		log.Error("failed to create order", slog.String("error", err.Error()))
 		return model.CreateOrderRes{}, fmt.Errorf("repository.CreateOrder: %w", err)
 	}
 
