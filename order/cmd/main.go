@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -25,6 +25,7 @@ import (
 	"github.com/m4kson/rocket-factory/order/internal/migrator"
 	ordersRepo "github.com/m4kson/rocket-factory/order/internal/repository/orders"
 	ordersService "github.com/m4kson/rocket-factory/order/internal/service/orders"
+	logger "github.com/m4kson/rocket-factory/platform/pkg/logger/slogLog"
 	orderV1 "github.com/m4kson/rocket-factory/shared/pkg/openapi/order/v1"
 	inventoryV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/inventory/v1"
 	paymentV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/payment/v1"
@@ -40,14 +41,24 @@ func main() {
 		panic(fmt.Errorf("failed to load config: %w", err))
 	}
 
+	log := logger.New(logger.Config{
+		Level:       config.AppConfig().Logger.Level(),
+		AsJson:      config.AppConfig().Logger.AsJson(),
+		ServiceName: "order",
+		Environment: "local", //todo add this ot config
+		AddSource:   true,    //todo getEnv("ENV", "production") == "local"
+	})
+
 	ctx := context.Background()
+
+	log.Info("initializing service")
 
 	inventoryConn, err := grpc.NewClient(
 		config.AppConfig().GrpcClient.InventoryGrpcAddr(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		log.Printf("failed to create inventory grpc connection: %v", err)
+		log.Error("failed to create inventory grpc client", slog.String("error", err.Error()))
 		return
 	}
 	defer inventoryConn.Close()
@@ -57,7 +68,7 @@ func main() {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		log.Printf("failed to create payment grpc connection: %v", err)
+		log.Error("failed to create payment grpc client", slog.String("error", err.Error()))
 		return
 	}
 	defer paymentConn.Close()
@@ -67,7 +78,7 @@ func main() {
 
 	dbPort, err := strconv.Atoi(config.AppConfig().Postgres.Port())
 	if err != nil {
-		log.Printf("Can't read data base port from .env: %v\n", err)
+		log.Error("failed to parse db port", slog.String("error", err.Error()))
 		return
 	}
 
@@ -86,19 +97,19 @@ func main() {
 	})
 
 	if err != nil {
-		log.Printf("Ошибка подключения к базе данных: %v\n", err)
+		log.Error("failed to create postgres pool", slog.String("db name", config.AppConfig().Postgres.DbName()), slog.String("error", err.Error()))
 		return
 	}
 	defer pool.Close()
 
-	log.Printf("connected to database %s on %s:%d as user %s\n", os.Getenv("POSTGRES_DB"), os.Getenv("POSTGRES_HOST"), dbPort, os.Getenv("POSTGRES_USER"))
+	log.Info("successfully connected to postgres", slog.String("db name", config.AppConfig().Postgres.DbName()), slog.String("port", config.AppConfig().Postgres.Port()))
 
 	migrationsPath := config.AppConfig().Postgres.MigrationsPath()
 	migrationRunner := migrator.NewMigrator(stdlib.OpenDB(*pool.Config().ConnConfig), migrationsPath)
 
 	err = migrationRunner.Up()
 	if err != nil {
-		log.Printf("migration runner failed: %v", err)
+		log.Error("failed to run migrations", slog.String("error", err.Error()))
 		return
 	}
 
@@ -107,7 +118,7 @@ func main() {
 
 	ogenServer, err := orderV1.NewServer(ordersApi.NewAPI(orderService))
 	if err != nil {
-		log.Fatal("can't create ogen server")
+		log.Error("failed to create order v1 server", slog.String("error", err.Error()))
 	}
 
 	r := chi.NewRouter()
@@ -125,24 +136,24 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Listening on port %s", config.AppConfig().HttpServer.Port())
+		log.Info("starting http server", slog.String("port", config.AppConfig().HttpServer.Port()))
 		err = server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("Failed to listen on port %s: %v", config.AppConfig().HttpServer.Port(), err)
+			log.Error("failed to start http server", slog.String("error", err.Error()), slog.String("port", config.AppConfig().HttpServer.Port()))
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	log.Info("shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.AppConfig().HttpServer.ShutdownTimeout())
 	defer cancel()
 
 	err = server.Shutdown(ctx)
 	if err != nil {
-		log.Printf("Failed to shutdown server gracefully: %v", err)
+		log.Error("failed to shutdown http server", slog.String("error", err.Error()))
 	}
-	log.Println("Server gracefully stopped")
+	log.Info("Server gracefully stopped")
 }

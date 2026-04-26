@@ -4,6 +4,8 @@ go 1.25.5
 
 replace github.com/m4kson/rocket-factory/shared => ../shared
 
+replace github.com/m4kson/rocket-factory/platform => ../platform
+
 require (
 	github.com/brianvoe/gofakeit/v7 v7.14.1
 	github.com/caarlos0/env/v11 v11.4.0
@@ -11,10 +13,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
+	github.com/m4kson/rocket-factory/platform v0.0.0-00010101000000-000000000000
 	github.com/m4kson/rocket-factory/shared v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.27.0
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/grpc v1.79.1
+	google.golang.org/grpc v1.80.0
 )
 
 require (
