@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-const configPath = "../deploy/compose/inventory/.env"
+const configPath = "../deploy/compose/payment/.env"
 
 func main() {
 	err := config.Load(configPath)
