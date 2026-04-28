@@ -44,52 +44,51 @@ func NewDiContainer() *diContainer {
 	return &diContainer{}
 }
 
-func (d *diContainer) InventoryClient() grpcClient.InventoryClient {
+func (d *diContainer) InventoryClient(_ context.Context) (grpcClient.InventoryClient, error) {
 	if d.inventoryClient == nil {
-		inventoryConn, err := grpc.NewClient(
+		conn, err := grpc.NewClient(
 			config.AppConfig().GrpcClient.InventoryGrpcAddr(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {
-			//log.Error("failed to create inventory grpc connection", slog.String("err", err))
+			return nil, fmt.Errorf("di: inventory grpc client: %w", err)
 		}
 
-		closer.AddNamed("Inventory gRPC connection", func(ctx context.Context) error {
-			return inventoryConn.Close()
+		closer.AddNamed("inventory gRPC connection", func(ctx context.Context) error {
+			return conn.Close()
 		})
 
-		d.inventoryClient = inventoryClient.NewClient(inventoryV1.NewInventoryServiceClient(inventoryConn))
+		d.inventoryClient = inventoryClient.NewClient(inventoryV1.NewInventoryServiceClient(conn))
 	}
 
-	return d.inventoryClient
+	return d.inventoryClient, nil
 }
 
-func (d *diContainer) PaymentClient() grpcClient.PaymentClient {
+func (d *diContainer) PaymentClient(_ context.Context) (grpcClient.PaymentClient, error) {
 	if d.paymentClient == nil {
-		paymentConn, err := grpc.NewClient(
+		conn, err := grpc.NewClient(
 			config.AppConfig().GrpcClient.PaymentGrpcAddr(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
-
 		if err != nil {
-			// log
+			return nil, fmt.Errorf("di: payment grpc client: %w", err)
 		}
 
-		closer.AddNamed("Payment gRPC connection", func(ctx context.Context) error {
-			return paymentConn.Close()
+		closer.AddNamed("payment gRPC connection", func(ctx context.Context) error {
+			return conn.Close()
 		})
 
-		d.paymentClient = paymentClient.NewClient(paymentV1.NewPaymentServiceClient(paymentConn))
+		d.paymentClient = paymentClient.NewClient(paymentV1.NewPaymentServiceClient(conn))
 	}
 
-	return d.paymentClient
+	return d.paymentClient, nil
 }
 
-func (d *diContainer) PostgresPool(ctx context.Context) *pgxpool.Pool {
+func (d *diContainer) PostgresPool(ctx context.Context) (*pgxpool.Pool, error) {
 	if d.postgresPool == nil {
 		dbPort, err := strconv.Atoi(config.AppConfig().Postgres.Port())
 		if err != nil {
-			//log
+			return nil, fmt.Errorf("di: invalid postgres port: %w", err)
 		}
 
 		pool, err := postgres.NewPool(ctx, postgres.Config{
@@ -105,63 +104,94 @@ func (d *diContainer) PostgresPool(ctx context.Context) *pgxpool.Pool {
 			MaxConnIdleTime:   30 * time.Minute,
 			HealthCehckPeriod: time.Minute,
 		})
-
 		if err != nil {
-			// log
-			panic(fmt.Sprintf("failed to connect to Postgres: %s\n", err.Error()))
+			return nil, fmt.Errorf("di: postgres pool: %w", err)
 		}
 
-		closer.AddNamed("Postgres pool", func(context.Context) error {
+		closer.AddNamed("postgres pool", func(context.Context) error {
 			pool.Close()
 			return nil
 		})
+
+		d.postgresPool = pool
 	}
 
-	return d.postgresPool
+	return d.postgresPool, nil
 }
 
-func (d *diContainer) MigrationRunner() *migrator.Migrator {
+func (d *diContainer) MigrationRunner(_ context.Context) (*migrator.Migrator, error) {
 	if d.migrationRunner == nil {
-		migrationsPath := config.AppConfig().Postgres.MigrationsPath()
+		dbPort, err := strconv.Atoi(config.AppConfig().Postgres.Port())
+		if err != nil {
+			return nil, fmt.Errorf("di: migration runner: invalid port: %w", err)
+		}
 
-		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		dsn := fmt.Sprintf(
+			"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 			config.AppConfig().Postgres.Host(),
-			config.AppConfig().Postgres.Port(),
+			dbPort,
 			config.AppConfig().Postgres.User(),
 			config.AppConfig().Postgres.Password(),
 			config.AppConfig().Postgres.DbName(),
 		)
+
 		poolCfg, err := pgxpool.ParseConfig(dsn)
 		if err != nil {
-			panic(fmt.Sprintf("failed to parse Postgres config: %s\n", err.Error()))
+			return nil, fmt.Errorf("di: migration runner: parse config: %w", err)
 		}
 
-		d.migrationRunner = migrator.NewMigrator(stdlib.OpenDB(*poolCfg.ConnConfig), migrationsPath)
+		d.migrationRunner = migrator.NewMigrator(
+			stdlib.OpenDB(*poolCfg.ConnConfig),
+			config.AppConfig().Postgres.MigrationsPath(),
+		)
 	}
 
-	return d.migrationRunner
+	return d.migrationRunner, nil
 }
 
-func (d *diContainer) OrderRepository(ctx context.Context) repository.OrderRepository {
+func (d *diContainer) OrderRepository(ctx context.Context) (repository.OrderRepository, error) {
 	if d.orderRepository == nil {
-		d.orderRepository = orderRepository.NewRepository(d.PostgresPool(ctx))
+		pool, err := d.PostgresPool(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("di: order repository: %w", err)
+		}
+		d.orderRepository = orderRepository.NewRepository(pool)
 	}
 
-	return d.orderRepository
+	return d.orderRepository, nil
 }
 
-func (d *diContainer) OrderService(ctx context.Context) service.OrderService {
+func (d *diContainer) OrderService(ctx context.Context) (service.OrderService, error) {
 	if d.orderService == nil {
-		d.orderService = orderService.NewOrderService(d.OrderRepository(ctx), d.PaymentClient(), d.InventoryClient())
+		repo, err := d.OrderRepository(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("di: order service: %w", err)
+		}
+
+		pay, err := d.PaymentClient(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("di: order service: %w", err)
+		}
+
+		inv, err := d.InventoryClient(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("di: order service: %w", err)
+		}
+
+		d.orderService = orderService.NewOrderService(repo, pay, inv)
 	}
 
-	return d.orderService
+	return d.orderService, nil
 }
 
-func (d *diContainer) OrderV1API(ctx context.Context) orderV1.Handler {
+func (d *diContainer) OrderV1API(ctx context.Context) (orderV1.Handler, error) {
 	if d.orderV1API == nil {
-		d.orderV1API = ordersApi.NewAPI(d.OrderService(ctx))
+		svc, err := d.OrderService(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("di: order api: %w", err)
+		}
+		d.orderV1API = ordersApi.NewAPI(svc)
 	}
 
-	return d.orderV1API
+	return d.orderV1API, nil
 }
