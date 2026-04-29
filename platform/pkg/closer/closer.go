@@ -196,3 +196,11 @@ func (c *Closer) handleSignals(signals ...os.Signal) {
 
 	}
 }
+
+func Done() <-chan struct{} {
+	return globalCloser.done
+}
+
+func (c *Closer) Done() <-chan struct{} {
+	return c.done
+}
