@@ -7,11 +7,11 @@ import (
 	"log/slog"
 	"net"
 
-	"github.com/m4kson/rocket-factory/inventory/internal/config"
+	"github.com/m4kson/rocket-factory/payment/internal/config"
 	"github.com/m4kson/rocket-factory/platform/pkg/closer"
 	"github.com/m4kson/rocket-factory/platform/pkg/grpc/health"
 	logger "github.com/m4kson/rocket-factory/platform/pkg/logger/slogLog"
-	inventoryV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/inventory/v1"
+	paymentV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/payment/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
@@ -35,8 +35,16 @@ func New(ctx context.Context) (*App, error) {
 	return a, nil
 }
 
-func (a *App) Run(ctx context.Context) error {
-	return a.runGRPCServer(ctx)
+func (a *App) Run() error {
+	go func() {
+		a.log.Info("starting grpc server", slog.String("address", a.listener.Addr().String()))
+		if err := a.grpcServer.Serve(a.listener); err != nil {
+			a.log.Error("grpc server error", slog.String("err", err.Error()))
+		}
+	}()
+
+	<-closer.Done()
+	return nil
 }
 
 func (a *App) initDeps(ctx context.Context) error {
@@ -62,7 +70,7 @@ func (a *App) initLogger(_ context.Context) error {
 	log := logger.New(logger.Config{
 		Level:       config.AppConfig().Logger.Level(),
 		AsJson:      config.AppConfig().Logger.AsJson(),
-		ServiceName: "inventory",
+		ServiceName: "payment",
 		Environment: "local", //todo add this ot config
 		AddSource:   true,    //todo getEnv("ENV", "production") == "local"
 	})
@@ -114,18 +122,7 @@ func (a *App) initGRPCServer(ctx context.Context) error {
 
 	health.RegisterService(a.grpcServer)
 
-	inventoryV1.RegisterInventoryServiceServer(a.grpcServer, a.diContainer.InventoryV1API(ctx))
-
-	return nil
-}
-
-func (a *App) runGRPCServer(ctx context.Context) error {
-	a.log.Info("starting gRPC server", "address", config.AppConfig().Grpc.Port())
-
-	err := a.grpcServer.Serve(a.listener)
-	if err != nil {
-		return err
-	}
+	paymentV1.RegisterPaymentServiceServer(a.grpcServer, a.diContainer.PaymentV1API())
 
 	return nil
 }
