@@ -46,4 +46,4 @@ type Manufacturer struct {
 	Website string `bson:"website"`
 }
 
-type Value interface{}
+type Value = any

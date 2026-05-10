@@ -13,7 +13,6 @@ import (
 	logger "github.com/m4kson/rocket-factory/platform/pkg/logger/slogLog"
 	inventoryV1 "github.com/m4kson/rocket-factory/shared/pkg/proto/inventory/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -104,7 +103,7 @@ func (a *App) initListener(_ context.Context) error {
 }
 
 func (a *App) initGRPCServer(ctx context.Context) error {
-	a.grpcServer = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+	a.grpcServer = grpc.NewServer()
 	closer.AddNamed("GRPC server", func(ctx context.Context) error {
 		a.grpcServer.GracefulStop()
 		return nil

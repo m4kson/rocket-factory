@@ -44,7 +44,7 @@ type Manufacturer struct {
 	Website string
 }
 
-type Value interface{}
+type Value = any
 
 type GetPartRequest struct {
 	PartId uuid.UUID
