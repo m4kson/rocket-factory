@@ -1,5 +1,5 @@
 services:
-  mongo-invnetory:
+  mongo-inventory:
     image: mongo:8.2.7
     container_name: mongo-inventory
     env_file:
@@ -22,6 +22,22 @@ services:
     restart: unless-stopped
     networks:
       factory-network:
+
+#  service-inventory:
+#    build:
+#      context: ../../..
+#      dockerfile: deploy/docker/inventory/Dockerfile
+#    container_name: service-inventory
+#    env_file:
+#      - .env
+#    ports:
+#      - "${GRPC_PORT}:50051"
+#    depends_on:
+#      mongo-inventory:
+#        condition: service_healthy
+#    restart: unless-stopped
+#    networks:
+#      - factory-network
 
 networks:
   factory-network:

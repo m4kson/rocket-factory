@@ -667,3 +667,12 @@ tasks:
         # Передаем список сервисов в виде строки с разделителями-запятыми
         export SERVICES="{{.SERVICES}}"
         ENV_SUBST={{.ENVSUBST}} "$SCRIPT"
+
+  e2e:test:inventory:
+    desc: "Запускает e2e тесты"
+    dir: inventory/tests/e2e/
+    cmds:
+      - echo "🚀 Запуск e2e тестов UFO сервиса..."
+      - ls ../../..
+      - cd ../../.. && go mod tidy
+      - go test -tags=integration -v ./...
