@@ -244,6 +244,66 @@ func (_c *OrderService_PayOrderById_Call) RunAndReturn(run func(context.Context,
 	return _c
 }
 
+// UpdateStatus provides a mock function with given fields: ctx, orderId, status
+func (_m *OrderService) UpdateStatus(ctx context.Context, orderId uuid.UUID, status model.OrderStatus) (*model.GetOrderResponse, error) {
+	ret := _m.Called(ctx, orderId, status)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateStatus")
+	}
+
+	var r0 *model.GetOrderResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, model.OrderStatus) (*model.GetOrderResponse, error)); ok {
+		return rf(ctx, orderId, status)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, model.OrderStatus) *model.GetOrderResponse); ok {
+		r0 = rf(ctx, orderId, status)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.GetOrderResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, model.OrderStatus) error); ok {
+		r1 = rf(ctx, orderId, status)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// OrderService_UpdateStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateStatus'
+type OrderService_UpdateStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - orderId uuid.UUID
+//   - status model.OrderStatus
+func (_e *OrderService_Expecter) UpdateStatus(ctx interface{}, orderId interface{}, status interface{}) *OrderService_UpdateStatus_Call {
+	return &OrderService_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, orderId, status)}
+}
+
+func (_c *OrderService_UpdateStatus_Call) Run(run func(ctx context.Context, orderId uuid.UUID, status model.OrderStatus)) *OrderService_UpdateStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(model.OrderStatus))
+	})
+	return _c
+}
+
+func (_c *OrderService_UpdateStatus_Call) Return(_a0 *model.GetOrderResponse, _a1 error) *OrderService_UpdateStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *OrderService_UpdateStatus_Call) RunAndReturn(run func(context.Context, uuid.UUID, model.OrderStatus) (*model.GetOrderResponse, error)) *OrderService_UpdateStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewOrderService creates a new instance of OrderService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewOrderService(t interface {
