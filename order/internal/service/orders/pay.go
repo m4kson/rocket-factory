@@ -12,6 +12,11 @@ import (
 func (s *service) PayOrderById(ctx context.Context, orderId uuid.UUID, paymentMethod model.PaymentMethod, userId uuid.UUID) (model.PayOrderRes, error) {
 	log := logger.FromContext(ctx)
 
+	order, err := s.orderRepository.GetOrderById(ctx, orderId)
+	if err != nil {
+		return model.PayOrderRes{}, err
+	}
+
 	paymentResponse, err := s.paymentClient.PayOrder(ctx, model.PayOrderRequest{
 		OrderId:       orderId.String(),
 		UserId:        userId.String(),
@@ -26,6 +31,16 @@ func (s *service) PayOrderById(ctx context.Context, orderId uuid.UUID, paymentMe
 	if err != nil {
 		return model.PayOrderRes{}, err
 	}
+
+	ordPaid := model.OrderPaidEvent{
+		ID:            uuid.NewString(),
+		OrderID:       orderId.String(),
+		UserID:        order.UserId.String(),
+		PaymentMethod: string(order.PaymentMethod),
+		TransactionID: paymentResponse.TransactionId,
+	}
+
+	err = s.orderProducerService.ProduceOrderPaid(ctx, ordPaid)
 
 	return response, nil
 }

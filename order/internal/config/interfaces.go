@@ -1,6 +1,10 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/IBM/sarama"
+)
 
 type LoggerConfig interface {
 	Level() string
@@ -26,4 +30,19 @@ type HttpServerConfig interface {
 	Port() string
 	ReadHeaderTimeout() time.Duration
 	ShutdownTimeout() time.Duration
+}
+
+type OrderAssembledConsumerConfig interface {
+	Topic() string
+	GroupID() string
+	Config() *sarama.Config
+}
+
+type OrderPaidProducerConfig interface {
+	TopicName() string
+	Config() *sarama.Config
+}
+
+type KafkaConfig interface {
+	Brokers() []string
 }
