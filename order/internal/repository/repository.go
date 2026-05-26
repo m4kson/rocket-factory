@@ -13,4 +13,5 @@ type OrderRepository interface {
 	CreateOrder(ctx context.Context, order repoModel.CreateOrderRequest) (model.CreateOrderRes, error)
 	PayOrderById(ctx context.Context, orderId uuid.UUID, paymentMethod model.PaymentMethod, transactionId uuid.UUID) (model.PayOrderRes, error)
 	CancelOrderById(ctx context.Context, orderId uuid.UUID) error
+	UpdateStatus(ctx context.Context, orderId uuid.UUID, status model.OrderStatus) (*model.GetOrderResponse, error)
 }

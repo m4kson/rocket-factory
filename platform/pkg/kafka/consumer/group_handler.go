@@ -29,7 +29,8 @@ func (g *groupHandler) Setup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-func (g *groupHandler) Cleanup(sarama.ConsumerGroupSession) error {
+func (g *groupHandler) Cleanup(session sarama.ConsumerGroupSession) error {
+	session.Commit()
 	return nil
 }
 
@@ -59,6 +60,7 @@ func (g *groupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 			}
 
 			session.MarkMessage(message, "")
+			session.Commit()
 
 		case <-session.Context().Done():
 			g.logger.Info("Kafka session context done")

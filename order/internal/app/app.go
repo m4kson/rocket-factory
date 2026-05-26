@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -15,6 +15,7 @@ import (
 	logger "github.com/m4kson/rocket-factory/platform/pkg/logger/slogLog"
 	appMiddleware "github.com/m4kson/rocket-factory/platform/pkg/middleware"
 	orderV1 "github.com/m4kson/rocket-factory/shared/pkg/openapi/order/v1"
+	"github.com/pkg/errors"
 )
 
 type App struct {
@@ -35,7 +36,34 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	return a.startServer()
+	errCh := make(chan error, 2)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go func() {
+		if err := a.runConsumer(ctx); err != nil {
+			errCh <- errors.Errorf("consumer crashed: %v", err)
+		}
+	}()
+
+	go func() {
+		if err := a.startServer(); err != nil {
+			errCh <- errors.Errorf("http server crashed: %v", err)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		a.log.InfoContext(ctx, "Shutdown signal received")
+	case err := <-errCh:
+		a.log.ErrorContext(ctx, "Component crashed, shutting down", slog.String("error", err.Error()))
+		cancel()
+		<-ctx.Done()
+		return err
+	}
+
+	return nil
 }
 
 func (a *App) initDeps(ctx context.Context) error {
@@ -146,4 +174,14 @@ func (a *App) initMigrations(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (a *App) runConsumer(ctx context.Context) error {
+	svc, err := a.diContainer.OrderConsumerService(ctx)
+	if err != nil {
+		return fmt.Errorf("runConsumer: %w", err)
+	}
+
+	a.log.InfoContext(ctx, "kafka consumer starting")
+	return svc.RunConsumer(ctx)
 }

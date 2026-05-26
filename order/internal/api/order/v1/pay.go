@@ -12,7 +12,9 @@ import (
 )
 
 func (a *api) PayOrderByUUID(ctx context.Context, req *orderV1.PayOrderRequest, params orderV1.PayOrderByUUIDParams) (orderV1.PayOrderByUUIDRes, error) {
-	userId := ctx.Value("user_id").(string)
+	//userId := ctx.Value("user_id").(string)
+	//todo put userId in context, next string is zaglushka
+	userId := "123e4567-e89b-12d3-a456-426614174000"
 	transaction, err := a.orderService.PayOrderById(ctx, params.OrderUUID, converter.PaymentMethodToModel(req.PaymentMethod), uuid.MustParse(userId))
 	if err != nil {
 		if errors.Is(err, model.ErrOrderNotFound) {
