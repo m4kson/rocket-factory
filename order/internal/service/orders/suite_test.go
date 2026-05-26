@@ -6,6 +6,7 @@ import (
 
 	clientsMocks "github.com/m4kson/rocket-factory/order/internal/client/grpc/mocks"
 	"github.com/m4kson/rocket-factory/order/internal/repository/mocks"
+	serviceMocks "github.com/m4kson/rocket-factory/order/internal/service/mocks"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -16,6 +17,8 @@ type ServiceSuite struct {
 
 	paymentClient   *clientsMocks.PaymentClient
 	inventoryClient *clientsMocks.InventoryClient
+
+	orderProducerService *serviceMocks.OrderProducerService
 
 	ctx context.Context
 
@@ -32,7 +35,9 @@ func (s *ServiceSuite) SetupTest() {
 	s.service = NewOrderService(
 		s.orderRepository,
 		s.paymentClient,
-		s.inventoryClient)
+		s.inventoryClient,
+		s.orderProducerService,
+	)
 }
 
 func (s *ServiceSuite) TearDownTest() {}

@@ -246,6 +246,66 @@ func (_c *OrderRepository_PayOrderById_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// UpdateStatus provides a mock function with given fields: ctx, orderId, status
+func (_m *OrderRepository) UpdateStatus(ctx context.Context, orderId uuid.UUID, status internalmodel.OrderStatus) (*internalmodel.GetOrderResponse, error) {
+	ret := _m.Called(ctx, orderId, status)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateStatus")
+	}
+
+	var r0 *internalmodel.GetOrderResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, internalmodel.OrderStatus) (*internalmodel.GetOrderResponse, error)); ok {
+		return rf(ctx, orderId, status)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, internalmodel.OrderStatus) *internalmodel.GetOrderResponse); ok {
+		r0 = rf(ctx, orderId, status)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*internalmodel.GetOrderResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, internalmodel.OrderStatus) error); ok {
+		r1 = rf(ctx, orderId, status)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// OrderRepository_UpdateStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateStatus'
+type OrderRepository_UpdateStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - orderId uuid.UUID
+//   - status internalmodel.OrderStatus
+func (_e *OrderRepository_Expecter) UpdateStatus(ctx interface{}, orderId interface{}, status interface{}) *OrderRepository_UpdateStatus_Call {
+	return &OrderRepository_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, orderId, status)}
+}
+
+func (_c *OrderRepository_UpdateStatus_Call) Run(run func(ctx context.Context, orderId uuid.UUID, status internalmodel.OrderStatus)) *OrderRepository_UpdateStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID), args[2].(internalmodel.OrderStatus))
+	})
+	return _c
+}
+
+func (_c *OrderRepository_UpdateStatus_Call) Return(_a0 *internalmodel.GetOrderResponse, _a1 error) *OrderRepository_UpdateStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *OrderRepository_UpdateStatus_Call) RunAndReturn(run func(context.Context, uuid.UUID, internalmodel.OrderStatus) (*internalmodel.GetOrderResponse, error)) *OrderRepository_UpdateStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewOrderRepository creates a new instance of OrderRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewOrderRepository(t interface {
